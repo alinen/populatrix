@@ -1,0 +1,44 @@
+.vs
+x64
+Debug
+Eigen3.3.7
+lp_solve_5.5.2.5_dev_win64
+*.dll
+*.filters
+*.user
+*.swp
+*.swo
+*~
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
