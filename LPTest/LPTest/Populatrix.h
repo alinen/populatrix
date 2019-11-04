@@ -11,7 +11,6 @@ public:
 	void setDesiredDistribution(const Eigen::MatrixXd& xd);
 	void setEdgeMatrix(const Eigen::MatrixXi& E);
 	void setDurations(const Eigen::MatrixXi& durations);
-	void setTravelTimes(const Eigen::MatrixXi& D);
 
 	void computeRates(Eigen::MatrixXd& k);
 
@@ -41,7 +40,5 @@ protected:
 	Eigen::MatrixXi _durations;
 	Eigen::MatrixXi _E; // edge matrix
 	Eigen::MatrixXd _xd; // desired activity distribution
-	Eigen::MatrixXd _k; // rates matrix
-	Eigen::MatrixXi _D; // travel time matrix
 	// todo: need areas where activities can be performed
 };

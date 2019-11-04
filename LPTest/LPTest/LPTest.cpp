@@ -206,6 +206,7 @@ bool TestK(const Eigen::MatrixXd& k,
 void TestSimulation(const Eigen::MatrixXd& k,
 	const Eigen::MatrixXd& xBar, bool verbose = false)
 {
+	// TODO
 }
 
 bool TestConvergence(const Eigen::MatrixXd& k,
@@ -346,8 +347,7 @@ void Test5()
 	TestConvergence(k, x, true);
 }
 
-
-int main()
+void Test6()
 {
 	Eigen::MatrixXi E(4, 4);
 	Eigen::MatrixXd x(4, 1);
@@ -370,6 +370,39 @@ int main()
 
 	TestK(k, x, true);
 	TestConvergence(k, x, true);
+}
+
+int main()
+{
+	Eigen::MatrixXi E(4, 4);
+	Eigen::MatrixXi d(4, 1);
+	Eigen::MatrixXd x(4, 1);
+	Eigen::MatrixXd k(4, 4);
+
+	E << 1, 0, 0, 1, 
+		 1, 0, 0, 0, 
+		 0, 1, 1, 0, 
+		 0, 0, 1, 0; 
+
+	x << 0.85,
+		 0.03,
+		 0.07,
+		 0.05;
+
+	d << 1,
+		3,
+		1,
+		5;
+
+	Populatrix calculator;
+	calculator.setDesiredDistribution(x);
+	calculator.setDurations(d);
+	calculator.setEdgeMatrix(E);
+	calculator.computeRates(k);
+
+	TestK(k, x, true);
+	TestConvergence(k, x, true);
+	TestSimulation(k, x, true);
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

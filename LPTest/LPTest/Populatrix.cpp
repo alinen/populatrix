@@ -20,11 +20,6 @@ void Populatrix::setEdgeMatrix(const Eigen::MatrixXi& E)
 	_E = E;
 }
 
-void Populatrix::setTravelTimes(const Eigen::MatrixXi& D)
-{
-	_D = D;
-}
-
 void Populatrix::setDurations(const Eigen::MatrixXi& durations)
 {
 	_durations = durations;
@@ -35,7 +30,6 @@ void Populatrix::sanityCheck()
 	assert(_E.rows() == _E.cols()); 
 	assert(_xd.size() == _E.rows());
 	assert(_durations.size() == 0 || (_durations.size() == _E.rows()));
-	assert(_D.size() == 0 || (_D.rows() == _E.rows()));
 }
 
 void Populatrix::computeRates(Eigen::MatrixXd& k)
@@ -49,22 +43,106 @@ void Populatrix::computeRates(Eigen::MatrixXd& k)
 	Eigen::MatrixXd ek; // expanded k
 	computeExpandedRates(eE, eXd, ek);
 
-	// todo: copy over rates to simple k
-	// this should remove all extra edges used to model timing
-	k = ek;
+	// copy over rates to simple k
+	// the rates will be contained in the last node of each chain
+	int n = (int) _E.rows();
+	int sumDurations = 0;
+	k.resize(_E.rows(), _E.cols());
+	for (int nodeid = 0; nodeid < n; nodeid++)
+	{
+		int idx = nodeid;
+		if (_durations(nodeid, 0) > 1)
+		{
+			idx = n + sumDurations + _durations(nodeid, 0) - 1 - 1;
+		}
+		for (int j = 0; j < n; j++)
+		{
+			k(j, nodeid) = ek(j, idx);
+		}
+		sumDurations += (_durations(nodeid, 0) - 1);
+	}
+	std::cout << " results\n";
+	std::cout << k << std::endl;
 }
 
+static void RemoveEdge(Eigen::MatrixXi& M, int i, int j)
+{
+	M(i, j) = 0;
+}
+
+static void AddEdge(Eigen::MatrixXi& M, int i, int j)
+{
+	M(i, j) = 1;
+}
+
+static int AddNode(Eigen::MatrixXi& M)
+{
+	int n = (int) M.rows();
+	M.conservativeResize(n + 1, n + 1);
+	for (int i = 0; i < n + 1; i++)
+	{
+		M(n, i) = 0;
+		M(i, n) = 0;
+	}
+	return n;
+}
 
 void Populatrix::expandGraph(
 	Eigen::MatrixXi& E, Eigen::MatrixXd& xd)
 {
-	if (_D.size() == 0 && _durations.size() == 0)
-	{
-		E = _E;
-		xd = _xd;
-		return;
-	}
+	E = _E;
+	xd = _xd;
+	std::cout << "TEST 1 \n" << E << std::endl;
+	std::cout << "TEST 1 \n" << xd << std::endl;
 
+	if (_durations.size() > 0) 
+	{
+		int n = (int) _durations.rows();
+		for (int nodeid = 0; nodeid < n; nodeid++) 
+		{
+			int d = _durations(nodeid, 0);
+			if (d > 1)
+			{
+				// save existing edges
+				auto col = _E.col(nodeid);
+
+				// set these edges to zero
+				for (int row = 0; row < n; row++)
+				{
+					RemoveEdge(E, row, nodeid);
+				}
+
+				// create chain
+				// extend xd too
+				xd.conservativeResize(xd.rows()+d-1,1);
+				xd(nodeid) = _xd(nodeid) / d;
+				int previd = nodeid;
+				int id = 0;
+				for (int row = 0; row < d-1; row++)
+				{
+					id = AddNode(E);
+					AddEdge(E, id, previd);
+
+					xd(id) = _xd(nodeid) / d;
+					previd = id;
+					std::cout << "LOOP " << row << " \n" << E << std::endl;
+					std::cout << "LOOP " << row << " \n" << xd << std::endl;
+				}
+
+				// last node has same edges as original node
+				for (int row = 0; row < col.size(); row++)
+				{
+					if (col(row) == 1)
+					{
+						AddEdge(E, row, id);
+					}
+				}
+				std::cout << "TEST 2 \n" << E << std::endl;
+				std::cout << "TEST 2 \n" << xd << std::endl;
+
+			}
+		}
+	}
 }
 
 void Populatrix::computeExpandedRates(
