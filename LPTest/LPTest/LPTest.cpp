@@ -6,6 +6,7 @@
 #include "Eigen/Dense"
 #include <unsupported/Eigen/MatrixFunctions>
 #include "lp_lib.h"
+#include "Populatrix.h"
 
 void SolveForK(const Eigen::MatrixXd& E, const Eigen::MatrixXd& xBar, Eigen::MatrixXd& k)
 {
@@ -348,7 +349,27 @@ void Test5()
 
 int main()
 {
-	Test4();
+	Eigen::MatrixXi E(4, 4);
+	Eigen::MatrixXd x(4, 1);
+	Eigen::MatrixXd k(4, 4);
+
+	E << 1, 1, 0, 1,
+	     1, 1, 1, 0,
+	     0, 1, 1, 1,
+	     1, 0, 1, 1;
+
+	x << 0.3,
+	     0.2,
+	     0.4,
+	     0.1;
+	
+	Populatrix calculator;
+	calculator.setDesiredDistribution(x);
+	calculator.setEdgeMatrix(E);
+	calculator.computeRates(k);
+
+	TestK(k, x, true);
+	TestConvergence(k, x, true);
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
