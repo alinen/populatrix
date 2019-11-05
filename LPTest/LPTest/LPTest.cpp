@@ -2,7 +2,10 @@
 //
 
 #include "pch.h"
+#include "time.h"
 #include <iostream>
+#include <functional>
+#include <random>
 #include "Eigen/Dense"
 #include <unsupported/Eigen/MatrixFunctions>
 #include "lp_lib.h"
@@ -203,10 +206,83 @@ bool TestK(const Eigen::MatrixXd& k,
 	return true;
 }
 
+std::default_random_engine generator((unsigned int) time(0)); 
+std::uniform_real_distribution<double> distribution(0, 1); 
+auto dice = std::bind(distribution, generator);
+
+double SampleExp(double lambda)
+{
+	return -log(dice()) / lambda;
+}
+
+int ChooseActivity(const Eigen::MatrixXd& k, int current)
+{
+	auto col = k.col(current);
+	double rval = dice();
+	double sum = 0;
+	for (int i = 0; i < col.size() - 1; i++)
+	{
+		double next = sum + col(i);
+		if (sum <= rval && rval < next)
+		{
+			return i;
+		}
+		sum += col(i);
+	}
+	return (int) col.size() - 1;
+}
+
+
 void TestSimulation(const Eigen::MatrixXd& k,
-	const Eigen::MatrixXd& xBar, bool verbose = false)
+	const Eigen::MatrixXd& xBar, 
+	const Eigen::MatrixXi& durations, 
+	int numSteps = 100, 
+	int numAgents = 100, 
+	bool verbose = false)
 {
 	// TODO
+	struct Agent 
+	{
+		double time = -1; 
+		int activityid = 0;
+	};
+	Agent* agents = new Agent[numAgents];
+	int* counts = new int[xBar.size()];
+
+	for (int step = 0; step < numSteps; step++)
+	{
+		for (int i = 0; i < xBar.size(); i++)
+		{
+			counts[i] = 0;
+		}
+
+		for (int i = 0; i < numAgents; i++)
+		{
+			if (agents[i].time < 0)
+			{
+				int currentA = agents[i].activityid;
+				int a = (int) ChooseActivity(k, currentA);
+				int time = durations(a);
+				agents[i].activityid = a;
+				agents[i].time = time;
+			}
+			else
+			{
+				agents[i].time -= 1;
+			}
+			counts[agents[i].activityid]++;
+		}
+
+		for (int i = 0; i < xBar.size(); i++)
+		{
+			std::cout << step << " " << i << ": "
+				<< (counts[i] / ((float)numAgents));
+		}
+		std::cout << std::endl;
+	}
+
+	delete[] counts;
+	delete[] agents;
 }
 
 bool TestConvergence(const Eigen::MatrixXd& k,
@@ -402,7 +478,7 @@ int main()
 
 	TestK(k, x, true);
 	TestConvergence(k, x, true);
-	TestSimulation(k, x, true);
+	TestSimulation(k, x, d, 10, 10, true);
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
