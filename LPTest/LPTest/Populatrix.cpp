@@ -1,5 +1,6 @@
 #include "Populatrix.h"
 #include <iostream>
+#include <fstream>
 #include "lp_lib.h"
 
 Populatrix::Populatrix()
@@ -25,6 +26,27 @@ void Populatrix::setDurations(const Eigen::MatrixXi& durations)
 	_durations = durations;
 }
 
+const Eigen::MatrixXd& Populatrix::getDesiredDistribution() const
+{
+	return _xd;
+}
+
+const Eigen::MatrixXi& Populatrix::getEdgeMatrix() const
+{
+	return _E;
+}
+
+const Eigen::MatrixXi& Populatrix::getDurations() const
+{
+	return _durations;
+}
+
+const Eigen::MatrixXd& Populatrix::getRates() const
+{
+	return _k;
+}
+
+
 void Populatrix::sanityCheck()
 {
 	assert(_E.rows() == _E.cols()); 
@@ -32,7 +54,7 @@ void Populatrix::sanityCheck()
 	assert(_durations.size() == 0 || (_durations.size() == _E.rows()));
 }
 
-void Populatrix::computeRates(Eigen::MatrixXd& k)
+const Eigen::MatrixXd& Populatrix::computeRates()
 {
 	sanityCheck();
 
@@ -47,7 +69,7 @@ void Populatrix::computeRates(Eigen::MatrixXd& k)
 	// the rates will be contained in the last node of each chain
 	int n = (int) _E.rows();
 	int sumDurations = 0;
-	k.resize(_E.rows(), _E.cols());
+	_k.resize(_E.rows(), _E.cols());
 	for (int nodeid = 0; nodeid < n; nodeid++)
 	{
 		int idx = nodeid;
@@ -57,12 +79,13 @@ void Populatrix::computeRates(Eigen::MatrixXd& k)
 		}
 		for (int j = 0; j < n; j++)
 		{
-			k(j, nodeid) = ek(j, idx);
+			_k(j, nodeid) = ek(j, idx);
 		}
 		sumDurations += (_durations(nodeid, 0) - 1);
 	}
 	std::cout << " results\n";
-	std::cout << k << std::endl;
+	std::cout << _k << std::endl;
+	return _k;
 }
 
 static void RemoveEdge(Eigen::MatrixXi& M, int i, int j)
@@ -319,3 +342,101 @@ void Populatrix::computeExpandedRates(
 	delete_lp(lp);
 }
 
+void Populatrix::loadModel(const std::string& openName)
+{
+	int n = 0;
+
+	std::ifstream dFile(openName + "-durations.csv");
+	if (!dFile.is_open())
+	{
+		std::cerr << "Error: cannot find durations for " + openName << std::endl;
+		return;
+	}
+	dFile >> n;
+	_durations.conservativeResize(n, 1);
+	for (int i = 0; i < n; i++)
+	{
+		dFile >> _durations(i, 0);
+	}
+	dFile.close();
+
+	std::ifstream EFile(openName + "-edges.csv");
+	if (!EFile.is_open())
+	{
+		std::cerr << "Error: cannot find edges for " + openName << std::endl;
+		return;
+	}
+	EFile >> n;
+	assert(n == _durations.rows());
+	_E.conservativeResize(n, n);
+	for (int i = 0; i < _E.rows(); i++)
+	{
+		for (int j = 0; j < _E.cols(); j++)
+		{
+			EFile >> _E(i, j); 
+		}
+	}
+	EFile.close();
+
+	std::ifstream kFile(openName + "-rates.csv");
+	if (!kFile.is_open())
+	{
+		std::cout << "Cannot find rates for " + openName << std::endl;
+		return;
+	}
+	kFile >> n;
+	assert(n == _durations.rows());
+	_k.conservativeResize(n, n);
+	_xd.conservativeResize(n, 1);
+	for (int i = 0; i < _k.rows(); i++)
+	{
+		for (int j = 0; j < _k.cols(); j++)
+		{
+			kFile >> _k(i, j);
+		}
+	}
+	for (int i = 0; i < _xd.rows(); i++)
+	{
+		kFile >> _xd(i, 0);
+	}
+	kFile.close();
+}
+
+void Populatrix::saveModel(const std::string& saveName)
+{
+	std::ofstream dFile(saveName + "-durations.csv");
+	dFile << _durations.size() << std::endl;
+	for (int i = 0; i < _durations.size(); i++)
+	{
+		dFile << _durations(i,0) << std::endl;
+	}
+	dFile.close();
+
+	std::ofstream EFile(saveName + "-edges.csv");
+	EFile << _E.rows() << std::endl;
+	for (int i = 0; i < _E.rows(); i++)
+	{
+		for (int j = 0; j < _E.cols(); j++)
+		{
+			EFile << _E(i, j) << " "; 
+		}
+		EFile << std::endl;
+	}
+	EFile.close();
+
+	std::ofstream kFile(saveName + "-rates.csv");
+	kFile << _k.rows() << std::endl;
+	for (int i = 0; i < _k.rows(); i++)
+	{
+		for (int j = 0; j < _k.cols(); j++)
+		{
+			kFile << _k(i, j) << " "; 
+		}
+		kFile << std::endl;
+	}
+	for (int i = 0; i < _xd.size(); i++)
+	{
+		kFile << _xd(i, 0) << std::endl;
+	}
+	kFile.close();
+}

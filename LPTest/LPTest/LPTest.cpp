@@ -249,6 +249,25 @@ void TestSimulation(const Eigen::MatrixXd& k,
 	Agent* agents = new Agent[numAgents];
 	int* counts = new int[xBar.size()];
 
+	double sum = 0;
+	Eigen::MatrixXi numStart(xBar.rows(), xBar.cols());
+	for (int i = 0; i < numStart.size(); i++)
+	{
+		sum += xBar(i);
+		numStart(i) = (int) (sum * numAgents);
+	}
+	int activityid = 0;
+	for (int i = 0; i < numAgents; i++)
+	{
+		if (i > numStart(activityid))
+		{
+			activityid++;
+		}
+		int time = durations(activityid);
+		agents[i].activityid = activityid;
+		agents[i].time = time;
+	}
+
 	for (int step = 0; step < numSteps; step++)
 	{
 		for (int i = 0; i < xBar.size(); i++)
@@ -273,10 +292,11 @@ void TestSimulation(const Eigen::MatrixXd& k,
 			counts[agents[i].activityid]++;
 		}
 
+		std::cout << step << " " ;
 		for (int i = 0; i < xBar.size(); i++)
 		{
-			std::cout << step << " " << i << ": "
-				<< (counts[i] / ((float)numAgents));
+			double percent = counts[i] / ((float)numAgents);
+			std::cout << i << ": " << percent << " ";
 		}
 		std::cout << std::endl;
 	}
@@ -442,13 +462,13 @@ void Test6()
 	Populatrix calculator;
 	calculator.setDesiredDistribution(x);
 	calculator.setEdgeMatrix(E);
-	calculator.computeRates(k);
+	k = calculator.computeRates();
 
 	TestK(k, x, true);
 	TestConvergence(k, x, true);
 }
 
-int main()
+void Test7()
 {
 	Eigen::MatrixXi E(4, 4);
 	Eigen::MatrixXi d(4, 1);
@@ -474,11 +494,37 @@ int main()
 	calculator.setDesiredDistribution(x);
 	calculator.setDurations(d);
 	calculator.setEdgeMatrix(E);
-	calculator.computeRates(k);
+	k = calculator.computeRates();
+	calculator.saveModel("test");
 
 	TestK(k, x, true);
 	TestConvergence(k, x, true);
-	TestSimulation(k, x, d, 10, 10, true);
+	TestSimulation(k, x, d, 1000, 100, true);
+}
+
+void Test8()
+{
+	Populatrix calculator;
+	calculator.loadModel("test");
+
+	Eigen::MatrixXi E = calculator.getEdgeMatrix();
+	Eigen::MatrixXi d = calculator.getDurations();
+	Eigen::MatrixXd x = calculator.getDesiredDistribution();
+	Eigen::MatrixXd k = calculator.getRates();
+
+	std::cout << E << std::endl;
+	std::cout << d << std::endl;
+	std::cout << x << std::endl;
+	std::cout << k << std::endl;
+
+	TestK(k, x, true);
+	TestConvergence(k, x, true);
+	TestSimulation(k, x, d, 1000, 100, true);
+}
+
+int main()
+{
+	Test8();
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

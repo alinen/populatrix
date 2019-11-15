@@ -1,0 +1,20 @@
+<html lang="en-US">
+<head>
+  <title>Pachacamac</title>
+  <meta charset="utf-8">
+</head>
+<body>
+  <div>
+  <img id="map" src="siteMap.svg" style="position:absolute; left: 0; top: 0; width: 500px; height: 500px; z-index: 0;"/>
+  <canvas id="myCanvas" x="0" y="0" width=500 height=500 style="position: absolute; width: 500px; height: 500px; left:0; top: 0; z-index: 1; border:1px solid #000000;"></canvas>
+  </div>
+  <script>
+   var canvas = document.getElementById("myCanvas");
+var ctx = canvas.getContext("2d");
+ctx.globalAlpha = 0.5;
+ctx.fillStyle = "#FF0000"; 
+ctx.fillRect(0, 0, 500, 250); 
+  </script>
+</body>
+</html>
+
