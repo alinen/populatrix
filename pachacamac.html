@@ -1,0 +1,137 @@
+<html lang="en-US">
+<head>
+  <title>Pachacamac</title>
+  <meta charset="utf-8">
+</head>
+<body onload="initialize();">
+  <div>
+  <img id="map" src="siteMap.svg" style="position:absolute; left: 0; top: 0; width: 500px; height: 500px; z-index: 0;"/>
+  <canvas id="myCanvas" x="0" y="0" width=500 height=500 style="position: absolute; width: 500px; height: 500px; left:0; top: 0; z-index: 1; border:1px solid #000000;"></canvas>
+  </div>
+  <script type="text/javascript" src="dat.gui.js"></script>
+  <script>
+var guiActivities = null;
+var guiKeys = null;
+var guiSim = null;
+
+// General
+var obj = {
+  load : function() {
+    console.log("TODO: LOAD");
+  },
+
+  save : function() {
+    console.log("TODO: SAVE");
+  }
+};
+
+// Areas
+var areas = [];
+var polygon = [];
+var selectArea = false;
+var guiAreas = null;
+var objArea = {
+
+  newArea: function () {
+     selectArea = true;
+  },
+
+  addArea: function () {
+     if (polygon.length == 0) return; // no work to do
+
+     var id = areas.length;
+     var idStr = id.toString();
+     var area = guiAreas.addFolder(idStr);
+     var newObj = {
+       gui: area,
+       name: "Area"+idStr,
+       type: "Generic",
+       numPoints: polygon.length,
+       points: polygon.slice(),
+       color: '#aaaaaa',
+       remove : () => (function(n) {
+          console.log("Removing: "+n);
+          guiAreas.removeFolder(areas[n].gui);
+          areas.splice(n,1);
+          draw();
+        })(id)
+     };
+     areas.push(newObj);
+     area.add(newObj, 'name');
+     area.add(newObj, 'type');
+     area.add(newObj, 'numPoints');
+     var colorController = area.addColor(newObj, 'color');
+     colorController.onChange(function(value) {
+       draw();
+     });
+     area.add(newObj, 'remove');
+
+     selectArea = false;
+     polygon = [];
+     draw();
+  }
+};
+
+function initialize()
+{
+  var canvas = document.getElementById("myCanvas");
+  canvas.addEventListener("mousedown", onMouseDown, false);
+
+  var gui = new dat.gui.GUI();
+  gui.add(obj, 'load');
+  gui.add(obj, 'save');
+
+  guiAreas = gui.addFolder('Areas');
+  guiAreas.add(objArea, 'newArea')
+  guiAreas.add(objArea, 'addArea')
+
+  guiActivities = gui.addFolder('Activities');
+  guiKeys = gui.addFolder('Keys');
+  guiSim = gui.addFolder('Sim');
+}
+
+function onMouseDown(event)
+{
+  if (selectArea === true)
+  {
+    console.log("x= "+event.pageX+" y= "+event.pageY);
+    polygon.push({x:event.pageX,y:event.pageY})
+    draw();
+  }
+}
+
+function drawPolygon(ctx, points, color)
+{
+  if (points.length === 0) return;
+
+  ctx.fillStyle = color;
+  ctx.strokeStyle = "#000000"; 
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (var i = 1; i < points.length; i++)
+  {
+    ctx.lineTo(points[i].x, points[i].y);
+  }
+  ctx.lineTo(points[0].x, points[0].y);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function draw()
+{
+  var canvas = document.getElementById("myCanvas");
+  var ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.globalAlpha = 0.5;
+
+  for (var i = 0; i < areas.length; i++)
+  {
+    var area = areas[i];
+    drawPolygon(ctx, area.points, area.color);
+  }
+  drawPolygon(ctx, polygon, "#FF0000"); 
+}
+  </script>
+</body>
+</html>
+
