@@ -11,9 +11,14 @@
   <input id="file-input" type="file" style="visibility:hidden" />  
   <script type="text/javascript" src="dat.gui.js"></script>
   <script>
-var guiActivities = null;
 var guiKeys = null;
 var guiSim = null;
+
+// Activities
+
+// Activities
+var activities = [];
+var guiActivities = null;
 
 // Areas
 var areas = [];
@@ -21,9 +26,7 @@ var polygon = [];
 var selectArea = false;
 var guiAreas = null;
 
-// General
-function LoadFile(evt)
-{
+function LoadFile(evt) {
   var files = evt.target.files; // FileList object
   if (files.length > 0)
   {
@@ -37,16 +40,26 @@ function LoadFile(evt)
            if (line === "") continue;
 
            var tokens = line.split(" ");
-           var name = tokens[0];
-           var type = tokens[1];
-           var color = tokens[2];
-           var points = [];
-           for (var j = 3; j < tokens.length; j++) {
-             var pointRE =/(\d+)/g;
-             var vals = tokens[j].match(pointRE);
-             points.push({x: Number(vals[0]), y: Number(vals[1])});
+           var modelInfoType = tokens[0];
+           if (modelInfoType == "area") {
+             var name = tokens[1];
+             var type = tokens[2];
+             var color = tokens[3];
+             var points = [];
+             for (var j = 4; j < tokens.length; j++) {
+               var pointRE =/(\d+)/g;
+               var vals = tokens[j].match(pointRE);
+               points.push({x: Number(vals[0]), y: Number(vals[1])});
+             }
+             AddArea(name, type, color, points);
            }
-           AddArea(name, type, color, points);
+           else if (modelInfoType == "activity") {
+             var name = tokens[1];
+             var type = tokens[2];
+             var duration = Number(tokens[3]);
+             var locations = tokens.splice(4,tokens.length-4).join()
+             AddActivity(name, type, duration, locations);
+           }
         }
         draw();
      };
@@ -56,35 +69,50 @@ function LoadFile(evt)
   }
 }
 
-var obj = {
-  load : function() {
-    document.getElementById("file-input").click();
-  },
-
-  save : function() {
-    contents = "";
-    for (var i = 0; i < areas.length; i++)
+function SaveToString() {
+  contents = "";
+  for (var i = 0; i < areas.length; i++)
+  {
+    var area = areas[i];
+    contents += "area " + area.name + " " + area.type + " " + area.color + " ";
+    for (var j = 0; j < area.points.length; j++)
     {
-      var area = areas[i];
-      contents += area.name + " " + area.type + " " + area.color + " ";
-      for (var j = 0; j < area.points.length; j++)
-      {
-        contents += "("+area.points[j].x+","+area.points[j].y+") ";
-      }
+      contents += "("+area.points[j].x+","+area.points[j].y+") ";
     }
-    var blob = new Blob([contents], {type: "text/csv;charset=utf-8"});
-    var a = document.createElement("a");
-    var url = URL.createObjectURL(blob);
-    a.href = url;
-    a.download = "model.csv";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function() {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    }, 0);
+    contents += "\n";
   }
-};
+  for (var i = 0; i < activities.length; i++)
+  {
+    var activity = activities[i];
+    var locations = activity.locations.replace(/\s/g, '');
+    contents += "activity " + activity.name + " " + area.type + " " + activity.duration + " " + activity.locations + "\n";
+  }
+  return contents;
+}
+
+function AddActivity(name, type, duration, locations) {
+   var id = activities.length;
+   var guiWidget = guiActivities.addFolder(id.toString());
+   var newObj = {
+     gui: guiWidget,
+     name: name,
+     type: type,
+     duration: duration,
+     locations: locations,
+
+     remove : () => (function(n) {
+        console.log("Removing: "+n);
+        guiActivities.removeFolder(activities[n].gui);
+        activities.splice(n,1);
+     })(id)
+   };
+   activities.push(newObj);
+   guiActivities.add(newObj, 'name');
+   guiActivities.add(newObj, 'type');
+   guiActivities.add(newObj, 'duration');
+   guiActivities.add(newObj, 'locations');
+   guiActivities.add(newObj, 'remove');
+}
 
 function AddArea(name, type, color, points) {
    var id = areas.length;
@@ -114,7 +142,26 @@ function AddArea(name, type, color, points) {
    guiArea.add(newObj, 'remove');
 }
 
-var objArea = {
+
+var guiObj = {
+  load : function() {
+    document.getElementById("file-input").click();
+  },
+
+  save : function() {
+    var contents = SaveToString();
+    var blob = new Blob([contents], {type: "text/csv;charset=utf-8"});
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = "model.csv";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }, 0);
+  },
 
   newArea: function () {
      selectArea = true;
@@ -130,6 +177,12 @@ var objArea = {
      selectArea = false;
      polygon = [];
      draw();
+  },
+
+  addActivity: function () {
+     var id = activities.length;
+     var idStr = id.toString();
+     AddActivity("Activitity"+idStr, "Generic", "0", "Generic");
   }
 };
 
@@ -141,24 +194,26 @@ function initialize()
   var gui = new dat.gui.GUI();
 
   guiAreas = gui.addFolder('Areas');
-  guiAreas.add(objArea, 'newArea')
-  guiAreas.add(objArea, 'addArea')
+  guiAreas.add(guiObj, 'newArea')
+  guiAreas.add(guiObj, 'addArea')
 
   guiActivities = gui.addFolder('Activities');
+  guiActivities.add(guiObj, 'addActivity');
+
   guiKeys = gui.addFolder('Keys');
   guiSim = gui.addFolder('Sim');
 
   // Check for the various File API support.
   if (window.File && window.FileReader && window.FileList && window.Blob) 
   {
-     gui.add(obj, 'load');
+     gui.add(guiObj, 'load');
      document.getElementById('file-input').addEventListener('change', LoadFile, false);
   } 
   else 
   {
-     alert('AssignedSeating requires File APIs (not fully supported in this browser).');
+     alert('Loading requires file APIs (not fully supported in this browser).');
   }   
-  gui.add(obj, 'save');
+  gui.add(guiObj, 'save');
 }
 
 function onMouseDown(event)
