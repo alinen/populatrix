@@ -8,28 +8,112 @@
   <img id="map" src="siteMap.svg" style="position:absolute; left: 0; top: 0; width: 500px; height: 500px; z-index: 0;"/>
   <canvas id="myCanvas" x="0" y="0" width=500 height=500 style="position: absolute; width: 500px; height: 500px; left:0; top: 0; z-index: 1; border:1px solid #000000;"></canvas>
   </div>
+  <input id="file-input" type="file" style="visibility:hidden" />  
   <script type="text/javascript" src="dat.gui.js"></script>
   <script>
 var guiActivities = null;
 var guiKeys = null;
 var guiSim = null;
 
-// General
-var obj = {
-  load : function() {
-    console.log("TODO: LOAD");
-  },
-
-  save : function() {
-    console.log("TODO: SAVE");
-  }
-};
-
 // Areas
 var areas = [];
 var polygon = [];
 var selectArea = false;
 var guiAreas = null;
+
+// General
+function LoadFile(evt)
+{
+  var files = evt.target.files; // FileList object
+  if (files.length > 0)
+  {
+     areas = [];
+
+     var reader = new FileReader();
+     reader.onload = function(e) {
+        var output = e.target.result.split('\n');
+        for (var i = 0; i < output.length; i++) {
+           var line = output[i].trim();
+           if (line === "") continue;
+
+           var tokens = line.split(" ");
+           var name = tokens[0];
+           var type = tokens[1];
+           var color = tokens[2];
+           var points = [];
+           for (var j = 3; j < tokens.length; j++) {
+             var pointRE =/(\d+)/g;
+             var vals = tokens[j].match(pointRE);
+             points.push({x: Number(vals[0]), y: Number(vals[1])});
+           }
+           AddArea(name, type, color, points);
+        }
+        draw();
+     };
+
+    // Read in the image file as a data URL.
+    reader.readAsText(files[0]);
+  }
+}
+
+var obj = {
+  load : function() {
+    document.getElementById("file-input").click();
+  },
+
+  save : function() {
+    contents = "";
+    for (var i = 0; i < areas.length; i++)
+    {
+      var area = areas[i];
+      contents += area.name + " " + area.type + " " + area.color + " ";
+      for (var j = 0; j < area.points.length; j++)
+      {
+        contents += "("+area.points[j].x+","+area.points[j].y+") ";
+      }
+    }
+    var blob = new Blob([contents], {type: "text/csv;charset=utf-8"});
+    var a = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = "model.csv";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }, 0);
+  }
+};
+
+function AddArea(name, type, color, points) {
+   var id = areas.length;
+   var guiArea = guiAreas.addFolder(id.toString());
+   var newObj = {
+     gui: guiArea,
+     name: name,
+     type: type,
+     numPoints: points.length,
+     points: points.slice(),
+     color: color,
+     remove : () => (function(n) {
+        console.log("Removing: "+n);
+        guiAreas.removeFolder(areas[n].gui);
+        areas.splice(n,1);
+        draw();
+      })(id)
+   };
+   areas.push(newObj);
+   guiArea.add(newObj, 'name');
+   guiArea.add(newObj, 'type');
+   guiArea.add(newObj, 'numPoints');
+   var colorController = guiArea.addColor(newObj, 'color');
+   colorController.onChange(function(value) {
+     draw();
+   });
+   guiArea.add(newObj, 'remove');
+}
+
 var objArea = {
 
   newArea: function () {
@@ -41,30 +125,7 @@ var objArea = {
 
      var id = areas.length;
      var idStr = id.toString();
-     var area = guiAreas.addFolder(idStr);
-     var newObj = {
-       gui: area,
-       name: "Area"+idStr,
-       type: "Generic",
-       numPoints: polygon.length,
-       points: polygon.slice(),
-       color: '#aaaaaa',
-       remove : () => (function(n) {
-          console.log("Removing: "+n);
-          guiAreas.removeFolder(areas[n].gui);
-          areas.splice(n,1);
-          draw();
-        })(id)
-     };
-     areas.push(newObj);
-     area.add(newObj, 'name');
-     area.add(newObj, 'type');
-     area.add(newObj, 'numPoints');
-     var colorController = area.addColor(newObj, 'color');
-     colorController.onChange(function(value) {
-       draw();
-     });
-     area.add(newObj, 'remove');
+     AddArea("Area"+idStr, "Generic", "#aaaaaa", polygon);
 
      selectArea = false;
      polygon = [];
@@ -78,8 +139,6 @@ function initialize()
   canvas.addEventListener("mousedown", onMouseDown, false);
 
   var gui = new dat.gui.GUI();
-  gui.add(obj, 'load');
-  gui.add(obj, 'save');
 
   guiAreas = gui.addFolder('Areas');
   guiAreas.add(objArea, 'newArea')
@@ -88,6 +147,18 @@ function initialize()
   guiActivities = gui.addFolder('Activities');
   guiKeys = gui.addFolder('Keys');
   guiSim = gui.addFolder('Sim');
+
+  // Check for the various File API support.
+  if (window.File && window.FileReader && window.FileList && window.Blob) 
+  {
+     gui.add(obj, 'load');
+     document.getElementById('file-input').addEventListener('change', LoadFile, false);
+  } 
+  else 
+  {
+     alert('AssignedSeating requires File APIs (not fully supported in this browser).');
+  }   
+  gui.add(obj, 'save');
 }
 
 function onMouseDown(event)
