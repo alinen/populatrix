@@ -11,10 +11,11 @@
   <input id="file-input" type="file" style="visibility:hidden" />  
   <script type="text/javascript" src="dat.gui.js"></script>
   <script>
-var guiKeys = null;
 var guiSim = null;
 
-// Activities
+// Keys
+var keys = [];
+var guiKeys = null;
 
 // Activities
 var activities = [];
@@ -60,6 +61,12 @@ function LoadFile(evt) {
              var locations = tokens.splice(4,tokens.length-4).join()
              AddActivity(name, type, duration, locations);
            }
+           else if (modelInfoType == "key") {
+             var name = tokens[1];
+             var time = tokens[2];
+             var distribution = tokens.splice(3,tokens.length-3).join()
+             AddKey(name, time, distribution);
+           }
         }
         draw();
      };
@@ -85,9 +92,37 @@ function SaveToString() {
   {
     var activity = activities[i];
     var locations = activity.locations.replace(/\s/g, '');
-    contents += "activity " + activity.name + " " + area.type + " " + activity.duration + " " + activity.locations + "\n";
+    contents += "activity " + activity.name + " " + area.type + " " + activity.duration + " " + locations + "\n";
+  }
+  for (var i = 0; i < keys.length; i++)
+  {
+    var key = keys[i];
+    var distribution = key.distribution.replace(/\s/g, '');
+    contents += "key " + key.name + " " + key.time + " " + distribution + "\n";
   }
   return contents;
+}
+
+function AddKey(name, time, distribution) {
+   var id = keys.length;
+   var guiWidget = guiKeys.addFolder(id.toString());
+   var newObj = {
+     gui: guiWidget,
+     name: name,
+     time: time,
+     distribution: distribution,
+
+     remove : () => (function(n) {
+        console.log("Removing: "+n);
+        guiKeys.remove(keys[n].gui);
+        keys.splice(n,1);
+     })(id)
+   };
+   keys.push(newObj);
+   guiKeys.add(newObj, 'name');
+   guiKeys.add(newObj, 'time');
+   guiKeys.add(newObj, 'distribution');
+   guiKeys.add(newObj, 'remove');
 }
 
 function AddActivity(name, type, duration, locations) {
@@ -183,6 +218,23 @@ var guiObj = {
      var id = activities.length;
      var idStr = id.toString();
      AddActivity("Activitity"+idStr, "Generic", "0", "Generic");
+  },
+
+  addKey: function () {
+     if (activities.length == 0)
+     {
+       alert("Activities must be defined before adding keys!");
+       return;
+     }
+     var id = keys.length;
+     var idStr = id.toString();
+     var value = 1.0/activities.length;
+     var distribution = activities[0].name + ":" + value.toString();
+     for (var i = 1; i < activities.length; i++)
+     {
+       distribution += "," + activities[i].name + ":" + value.toString();
+     }
+     AddKey("key"+idStr, "Any", distribution);
   }
 };
 
@@ -201,6 +253,8 @@ function initialize()
   guiActivities.add(guiObj, 'addActivity');
 
   guiKeys = gui.addFolder('Keys');
+  guiKeys.add(guiObj, 'addKey');
+
   guiSim = gui.addFolder('Sim');
 
   // Check for the various File API support.
