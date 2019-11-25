@@ -342,7 +342,7 @@ void Populatrix::computeExpandedRates(
 	delete_lp(lp);
 }
 
-void Populatrix::loadModel(const std::string& openName)
+void Populatrix::loadRates(const std::string& openName)
 {
 	int n = 0;
 
@@ -402,7 +402,7 @@ void Populatrix::loadModel(const std::string& openName)
 	kFile.close();
 }
 
-void Populatrix::saveModel(const std::string& saveName)
+void Populatrix::saveRates(const std::string& saveName)
 {
 	std::ofstream dFile(saveName + "-durations.csv");
 	dFile << _durations.size() << std::endl;
@@ -439,4 +439,99 @@ void Populatrix::saveModel(const std::string& saveName)
 		kFile << _xd(i, 0) << std::endl;
 	}
 	kFile.close();
+}
+
+void Populatrix::loadModel(const std::string& openName)
+{
+	std::ifstream dFile(openName);
+	if (!dFile.is_open())
+	{
+		std::cerr << "Error: cannot open model: " + openName << std::endl;
+		return;
+	}
+	_keys.clear();
+	_areas.clear();
+	_activities.clear();
+	_sites.clear();
+
+	std::string line;
+	while (std::getline(dFile, line))
+	{
+		std::istringstream linestream(line);
+		std::string type;
+		linestream >> type;
+		if (type == "key")
+		{
+			std::string name;
+			std::string time;
+			std::string distStr;
+			linestream >> name;
+			linestream >> time;
+			linestream >> distStr;
+
+			// note: good tokenize appraoch
+			std::vector<std::pair<std::string, double>> distribution;
+			std::string token;
+			std::istringstream distStream(distStr);
+			while (std::getline(distStream, token, ','))
+			{
+				size_t splitPos = token.find(':', 0);
+				if (splitPos == std::string::npos)
+				{
+					std::cerr << "Error parsing key distribution\n";
+				}
+			    std::string aname = token.substr(0, splitPos);
+			    double afraction = stod((token.substr(splitPos+1, token.length() - splitPos)));
+				distribution.push_back(std::pair<std::string, double>(aname, afraction));
+			}
+			unsigned int id = (unsigned int) _keys.size();
+			Key key{id, name, time, distribution};
+			_keys[id] = key;
+		}
+		else if (type == "area")
+		{
+			std::string name;
+			std::string locationType;
+			linestream >> name;
+			linestream >> locationType;
+
+			unsigned int id = (unsigned int) _areas.size();
+			Area area{id, name, locationType};
+			_areas[id] = area;
+		}
+		else if (type == "activity")
+		{
+			std::string name;
+			std::string activityType;
+			std::string locationType;
+			int duration;
+			linestream >> name;
+			linestream >> activityType;
+			linestream >> duration;
+			linestream >> locationType;
+
+			unsigned int id = (unsigned int) _activities.size();
+			Activity activity{id, name, activityType, locationType, duration};
+			_activities[id] = activity;
+		}
+	}
+	initRateModel();
+}
+
+void Populatrix::initRateModel() // create rate model from logical model
+{
+	for (auto item : _areas)
+	{
+		std::cout << item.second.name << std::endl;
+	}
+
+	for (auto item : _activities)
+	{
+		std::cout << item.second.name << std::endl;
+	}
+
+	for (auto item : _keys)
+	{
+		std::cout << item.second.name << std::endl;
+	}
 }

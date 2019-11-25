@@ -1,6 +1,7 @@
 #pragma once
 #include <Eigen/Dense>
 #include <vector>
+#include <map>
 
 class Populatrix
 {
@@ -9,7 +10,9 @@ public:
 	virtual ~Populatrix();
 	
 	void loadModel(const std::string& openName);
-	void saveModel(const std::string& saveName);
+
+	void loadRates(const std::string& openName);
+	void saveRates(const std::string& saveName);
 
 	void setDesiredDistribution(const Eigen::MatrixXd& xd);
 	void setEdgeMatrix(const Eigen::MatrixXi& E);
@@ -22,32 +25,53 @@ public:
 
 	const Eigen::MatrixXd& computeRates();
 
-	/*
-	int getNumActivities() const;
-	std::string getName(int id) const;
-	float getDuration(int id) const;
-	int getId(const std::string& name) const;
-	std::vector<int> getNextActivities() const;
-	std::vector<int> getPrevActivities() const;
-	float getTransitionRate(int id) const;
-	*/
-
 protected:
 
 	void expandGraph(Eigen::MatrixXi& E, Eigen::MatrixXd& xd);
 	void computeExpandedRates(const Eigen::MatrixXi& E, 
 		const Eigen::MatrixXd& xd, Eigen::MatrixXd& k);
 	void sanityCheck();
+	void initRateModel(); // create rate model from logical model
 
-	struct Activity
-	{
-		int id;
-		std::string name;
-		int duration;
-	};
+	// rate model: matrices based on activity,site ids
 	Eigen::MatrixXi _durations;
 	Eigen::MatrixXi _E; // edge matrix
 	Eigen::MatrixXd _xd; // desired activity distribution
 	Eigen::MatrixXd _k; // desired activity distribution
-	// todo: need areas where activities can be performed
+
+	// logical model: human annotation and keys
+	struct Site
+	{
+		unsigned int activityId;
+		unsigned int areaId;
+	};
+
+	struct Activity
+	{
+		unsigned int id;      // unique id
+		std::string name;     // ex: Dance
+		std::string category; // ex. Celebrate
+		std::string area;     // area or area cateory, ex. Plaza
+		int duration;         // duration in 'ratio' units	
+	};
+
+	struct Area
+	{
+		unsigned int id;
+		std::string name;
+		std::string category;
+	};
+
+	struct Key
+	{
+		unsigned int id;
+		std::string name;
+		std::string time;
+		std::vector<std::pair<std::string, double>> distribution;
+	};
+
+	std::map<int, Key> _keys;
+	std::map<int, Activity> _activities;
+	std::map<int, Area> _areas;
+	std::map<int, Site> _sites;
 };

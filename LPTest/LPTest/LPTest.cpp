@@ -495,7 +495,7 @@ void Test7()
 	calculator.setDurations(d);
 	calculator.setEdgeMatrix(E);
 	k = calculator.computeRates();
-	calculator.saveModel("test");
+	calculator.saveRates("test");
 
 	TestK(k, x, true);
 	TestConvergence(k, x, true);
@@ -505,7 +505,7 @@ void Test7()
 void Test8()
 {
 	Populatrix calculator;
-	calculator.loadModel("test");
+	calculator.loadRates("test");
 
 	Eigen::MatrixXi E = calculator.getEdgeMatrix();
 	Eigen::MatrixXi d = calculator.getDurations();
@@ -524,7 +524,8 @@ void Test8()
 
 int main()
 {
-	Test8();
+	Populatrix p;
+	p.loadModel("model.csv");
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
