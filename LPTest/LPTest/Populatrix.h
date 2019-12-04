@@ -44,22 +44,31 @@ protected:
 	{
 		unsigned int activityId;
 		unsigned int areaId;
+		friend bool operator > (const Site& lhs, const Site& rhs)
+		{
+			return lhs.activityId > rhs.activityId &&
+				lhs.areaId >= rhs.areaId;
+		}
+		friend bool operator < (const Site& lhs, const Site& rhs)
+		{
+			return !(lhs > rhs); 
+		}
 	};
 
 	struct Activity
 	{
 		unsigned int id;      // unique id
 		std::string name;     // ex: Dance
-		std::string category; // ex. Celebrate
-		std::string area;     // area or area cateory, ex. Plaza
+		std::vector<std::string> areas;     // area or area cateory, ex. Plaza
 		int duration;         // duration in 'ratio' units	
 	};
 
 	struct Area
 	{
 		unsigned int id;
-		std::string name;
-		std::string category;
+		std::string name;  // e.g. Area0
+		std::string type;  // e.g. Plaza
+		std::vector<std::string> activities;
 	};
 
 	struct Key
@@ -73,5 +82,5 @@ protected:
 	std::map<int, Key> _keys;
 	std::map<int, Activity> _activities;
 	std::map<int, Area> _areas;
-	std::map<int, Site> _sites;
+	std::vector<Site> _sites;
 };

@@ -1,6 +1,7 @@
 #include "Populatrix.h"
 #include <iostream>
 #include <fstream>
+#include <set>
 #include "lp_lib.h"
 
 Populatrix::Populatrix()
@@ -469,7 +470,7 @@ void Populatrix::loadModel(const std::string& openName)
 			linestream >> time;
 			linestream >> distStr;
 
-			// note: good tokenize appraoch
+			// note: good tokenize appraoch - istringstream
 			std::vector<std::pair<std::string, double>> distribution;
 			std::string token;
 			std::istringstream distStream(distStr);
@@ -491,27 +492,41 @@ void Populatrix::loadModel(const std::string& openName)
 		else if (type == "area")
 		{
 			std::string name;
-			std::string locationType;
+			std::string activityListStr;
+			std::string activityStr;
 			linestream >> name;
-			linestream >> locationType;
+			linestream >> activityListStr;
+
+			std::vector<std::string> activities;
+			std::istringstream activityStream(activityListStr);
+			while (std::getline(activityStream, activityStr, ','))
+			{
+				activities.push_back(activityStr);
+			}
 
 			unsigned int id = (unsigned int) _areas.size();
-			Area area{id, name, locationType};
+			Area area{id, name, activities};
 			_areas[id] = area;
 		}
 		else if (type == "activity")
 		{
 			std::string name;
-			std::string activityType;
-			std::string locationType;
+			std::string locationStr;
+			std::string locationListStr;
 			int duration;
 			linestream >> name;
-			linestream >> activityType;
+			linestream >> locationListStr;
 			linestream >> duration;
-			linestream >> locationType;
+
+			std::vector<std::string> locations;
+			std::istringstream locationStream(locationListStr);
+			while (std::getline(locationStream, locationStr, ','))
+			{
+				locations.push_back(locationStr);
+			}
 
 			unsigned int id = (unsigned int) _activities.size();
-			Activity activity{id, name, activityType, locationType, duration};
+			Activity activity{id, name, locations, duration};
 			_activities[id] = activity;
 		}
 	}
@@ -533,5 +548,23 @@ void Populatrix::initRateModel() // create rate model from logical model
 	for (auto item : _keys)
 	{
 		std::cout << item.second.name << std::endl;
+	}
+
+	// compute sites
+	std::set<Site> uniqueSites;
+	for (auto area : _areas)
+	{
+		for (auto activity : _activities)
+		{
+			Site site{activity.second.id, area.second.id};
+			uniqueSites.insert(site);
+		}
+	}
+
+	for (auto site : uniqueSites)
+	{
+		_sites.push_back(site);
+		std::cout << "site: " << _activities[site.activityId].name 
+			<< " " << _areas[site.areaId].name << std::endl;
 	}
 }

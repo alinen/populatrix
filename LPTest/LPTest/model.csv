@@ -1,3 +1,5 @@
-area Area0 Generic #aaaaaa (235,309) (304,244) (308,321) 
-activity Dance Generic 1 Plaza
-key key0 Any Dance:1
+area Area0 Plaza Talk,Dance,Play #aaaaaa (235,309) (304,244) (308,321) 
+area Area1 Plaza Talk,Dance,Play #aaaaaa (235,309) (304,244) (308,321) 
+activity Dance Plaza 1
+activity Talk Plaza,Temple 4
+key key0 Any Dance:0.5,Talk:0.5
