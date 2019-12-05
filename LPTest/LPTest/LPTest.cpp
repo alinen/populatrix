@@ -526,6 +526,8 @@ int main()
 {
 	Populatrix p;
 	p.loadModel("model.csv");
+	p.computeRates();
+	p.saveRates("model");
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

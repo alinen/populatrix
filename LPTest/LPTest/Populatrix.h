@@ -46,8 +46,9 @@ protected:
 		unsigned int areaId;
 		friend bool operator > (const Site& lhs, const Site& rhs)
 		{
-			return lhs.activityId > rhs.activityId &&
-				lhs.areaId >= rhs.areaId;
+			if (lhs.activityId > rhs.activityId) return true;
+			return lhs.activityId == rhs.activityId &&
+				lhs.areaId > rhs.areaId;
 		}
 		friend bool operator < (const Site& lhs, const Site& rhs)
 		{
@@ -61,6 +62,7 @@ protected:
 		std::string name;     // ex: Dance
 		std::vector<std::string> areas;     // area or area cateory, ex. Plaza
 		int duration;         // duration in 'ratio' units	
+		int numSites;
 	};
 
 	struct Area
@@ -68,7 +70,6 @@ protected:
 		unsigned int id;
 		std::string name;  // e.g. Area0
 		std::string type;  // e.g. Plaza
-		std::vector<std::string> activities;
 	};
 
 	struct Key
@@ -76,7 +77,7 @@ protected:
 		unsigned int id;
 		std::string name;
 		std::string time;
-		std::vector<std::pair<std::string, double>> distribution;
+		std::map<int, double> distribution;
 	};
 
 	std::map<int, Key> _keys;

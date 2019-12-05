@@ -440,6 +440,16 @@ void Populatrix::saveRates(const std::string& saveName)
 		kFile << _xd(i, 0) << std::endl;
 	}
 	kFile.close();
+
+	std::ofstream sitesFile(saveName + "-sites.csv");
+	sitesFile << _sites.size() << std::endl;
+	for (int i = 0; i < _sites.size(); i++)
+	{
+		const Site& site = _sites[i];
+		sitesFile << _activities[site.activityId].name 
+			<< " " << _areas[site.areaId].name << std::endl;
+	}
+	sitesFile.close();
 }
 
 void Populatrix::loadModel(const std::string& openName)
@@ -471,7 +481,7 @@ void Populatrix::loadModel(const std::string& openName)
 			linestream >> distStr;
 
 			// note: good tokenize appraoch - istringstream
-			std::vector<std::pair<std::string, double>> distribution;
+			std::map<int, double> distribution;
 			std::string token;
 			std::istringstream distStream(distStr);
 			while (std::getline(distStream, token, ','))
@@ -483,7 +493,20 @@ void Populatrix::loadModel(const std::string& openName)
 				}
 			    std::string aname = token.substr(0, splitPos);
 			    double afraction = stod((token.substr(splitPos+1, token.length() - splitPos)));
-				distribution.push_back(std::pair<std::string, double>(aname, afraction));
+				int activityId = -1;
+				for (auto it : _activities)
+				{
+					if (it.second.name == aname)
+					{
+						activityId = it.second.id;
+						break;
+					}
+				}
+				if (activityId == -1)
+				{
+					std::cerr << "Activity not found: " << aname << std::endl;
+				}
+				distribution[activityId] = afraction;
 			}
 			unsigned int id = (unsigned int) _keys.size();
 			Key key{id, name, time, distribution};
@@ -492,20 +515,12 @@ void Populatrix::loadModel(const std::string& openName)
 		else if (type == "area")
 		{
 			std::string name;
-			std::string activityListStr;
-			std::string activityStr;
+			std::string type;
 			linestream >> name;
-			linestream >> activityListStr;
-
-			std::vector<std::string> activities;
-			std::istringstream activityStream(activityListStr);
-			while (std::getline(activityStream, activityStr, ','))
-			{
-				activities.push_back(activityStr);
-			}
+			linestream >> type;
 
 			unsigned int id = (unsigned int) _areas.size();
-			Area area{id, name, activities};
+			Area area{id, name, type};
 			_areas[id] = area;
 		}
 		else if (type == "activity")
@@ -526,7 +541,7 @@ void Populatrix::loadModel(const std::string& openName)
 			}
 
 			unsigned int id = (unsigned int) _activities.size();
-			Activity activity{id, name, locations, duration};
+			Activity activity{id, name, locations, duration, 0};
 			_activities[id] = activity;
 		}
 	}
@@ -556,8 +571,15 @@ void Populatrix::initRateModel() // create rate model from logical model
 	{
 		for (auto activity : _activities)
 		{
-			Site site{activity.second.id, area.second.id};
-			uniqueSites.insert(site);
+			const std::vector<std::string>& areas = activity.second.areas;
+			if (std::find(areas.begin(), areas.end(), area.second.type) != areas.end())
+			{
+				Site site{activity.second.id, area.second.id};
+				std::cout << "insert " << activity.second.id << " " << area.second.id << std::endl;
+				uniqueSites.insert(site);
+				// todo: assumes this works
+				_activities[activity.first].numSites++;
+			}
 		}
 	}
 
@@ -566,5 +588,30 @@ void Populatrix::initRateModel() // create rate model from logical model
 		_sites.push_back(site);
 		std::cout << "site: " << _activities[site.activityId].name 
 			<< " " << _areas[site.areaId].name << std::endl;
+	}
+
+	// Create edge matrix
+	_E = Eigen::MatrixXi::Ones(_sites.size(), _sites.size());
+	// TODO: Read in constraints 
+	//for (int i = 0; i < _sites.size(); i++)
+	//{
+	//  if constraints[_sites[i].activity, _sites[j].activity] == 1, set _E(i,j) = 1
+	//}
+	// split desired distribution across sites. 
+	_xd = Eigen::MatrixXd::Zero(_sites.size(),1);
+	_durations = Eigen::MatrixXi::Zero(_sites.size(),1);
+	for (int i = 0; i < _sites.size(); i++)
+	{
+		const Site& site = _sites[i];
+		const Activity& activity = _activities[site.activityId];
+		double desired = _keys[0].distribution[activity.id];
+		double d = desired / activity.numSites;
+		_xd(i) = d;
+		_durations(i) = activity.duration;
+
+		std::cout << "site: " << _activities[site.activityId].name 
+			<< " " << _areas[site.areaId].name << std::endl;
+		std::cout << "  activity dist " << _xd(i) << std::endl;
+		std::cout << "  activity duration " << _durations(i) << std::endl;
 	}
 }
